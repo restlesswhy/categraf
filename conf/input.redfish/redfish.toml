@@ -1,0 +1,14 @@
+[[instances]]
+[[instances.addresses]]
+url = ""
+username = ""
+password = ""
+
+[[instances.sets]]
+urn = "redfish/v1/Chassis/1/Power"
+prefix = "redfish_power"
+
+  [[instances.sets.metrics]]
+  name = "last_power_output_watts"
+  prefix = "power_supplies"
+  path = "PowerSupplies.#.LastPowerOutputWatts"
