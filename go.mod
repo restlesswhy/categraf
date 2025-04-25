@@ -112,7 +112,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/siebenmann/go-kstat v0.0.0-20210513183136-173c9b0a9973 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tjfoc/gmsm v1.3.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
@@ -173,7 +173,7 @@ require (
 	github.com/safchain/ethtool v0.3.0
 	github.com/sijms/go-ora/v2 v2.8.6
 	github.com/sleepinggenius2/gosmi v0.4.4
-	github.com/tidwall/gjson v1.14.4
+	github.com/tidwall/gjson v1.18.0
 	github.com/vmware/govmomi v0.29.0
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	google.golang.org/genproto/googleapis/api v0.0.0-20231106174013-bbf56f31fb17
