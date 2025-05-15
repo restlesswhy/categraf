@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +52,7 @@ func (r *Redfish) GetInstances() []inputs.Instance {
 type Instance struct {
 	Addresses []Address `toml:"addresses"`
 	Sets      []Set     `toml:"sets"`
+	Disks     Disk      `toml:"disks"`
 
 	config.InstanceConfig
 }
@@ -74,10 +74,26 @@ type Set struct {
 	Metrics []Metric `toml:"metrics"`
 }
 
+type Disk struct {
+	URN      string   `toml:"urn"`
+	FromData bool     `toml:"from_data"`
+	LinkPath string   `toml:"link_path"`
+	DataPath string   `toml:"data_path"`
+	DataName string   `toml:"data_name"`
+	DataTags []string `toml:"data_tags"`
+	Child    *Disk    `toml:"child"`
+}
+
 type Metric struct {
 	Name   string `toml:"name"`
 	Prefix string `toml:"prefix"`
 	Path   string `toml:"path"`
+	Tags   []Tag  `toml:"tags"`
+}
+
+type Tag struct {
+	Name string `toml:"name"`
+	Path string `toml:"path"`
 }
 
 func (i *Instance) Init() error {
@@ -124,29 +140,140 @@ func join(in ...string) string {
 func (i *Instance) Gather(sList *types.SampleList) {
 	for _, a := range i.Addresses {
 		for _, s := range i.Sets {
-			ready := a.baseURL.ResolveReference(&url.URL{Path: s.URN})
+			setUrl := a.baseURL.ResolveReference(&url.URL{Path: s.URN})
 
-			js, err := a.getData(ready.String())
+			js, err := a.getData(setUrl.String())
 			if err != nil {
 				log.Println("E! error getData", err)
 				continue
 			}
 
-			tags := map[string]string{
-				"address": a.baseURL.Host,
-			}
-
-			fields := make(map[string]interface{})
 			for _, m := range s.Metrics {
 				value := gjson.Get(js, m.Path)
 
+				if !value.IsArray() {
+					fields := make(map[string]interface{})
+					fields[join(m.Prefix, m.Name)] = prepareValue(value)
+					tags := map[string]string{
+						"address": a.baseURL.Host,
+					}
+
+					for _, v := range m.Tags {
+						tmp := gjson.Get(js, v.Path)
+						if !tmp.Exists() || tmp.IsArray() {
+							continue
+						}
+
+						tags[v.Name] = tmp.String()
+					}
+
+					sList.PushSamples(s.Prefix, fields, tags)
+
+					continue
+				}
+
 				for i, v := range value.Array() {
-					fields[join(m.Prefix, m.Name, strconv.Itoa(i))] = v.Value()
+					fields := make(map[string]interface{})
+					fields[join(m.Prefix, m.Name)] = prepareValue(v)
+					tags := map[string]string{
+						"address": a.baseURL.Host,
+					}
+
+					for _, t := range m.Tags {
+						tmp := gjson.Get(js, t.Path)
+						if !tmp.Exists() {
+							continue
+						}
+
+						if len(tmp.Array()) > i {
+							tags[t.Name] = tmp.Array()[i].String()
+						} else {
+							tags[t.Name] = tmp.String()
+						}
+					}
+
+					sList.PushSamples(s.Prefix, fields, tags)
 				}
 			}
-
-			sList.PushSamples(s.Prefix, fields, tags)
 		}
+
+		// Disk
+		if i.Disks.LinkPath == "" || i.Disks.DataPath == "" || i.Disks.URN == "" {
+			continue
+		}
+
+		if err := gatherDisks(a, &i.Disks, sList, ""); err != nil {
+			log.Println("E! get disks data error", err)
+			continue
+		}
+	}
+}
+
+func gatherDisks(a Address, d *Disk, sList *types.SampleList, prev string) error {
+	if d == nil {
+		return nil
+	}
+
+	var u *url.URL
+	if !d.FromData {
+		u = a.baseURL.ResolveReference(&url.URL{Path: d.URN})
+	} else {
+		u = a.baseURL.ResolveReference(&url.URL{Path: gjson.Get(prev, d.URN).String()})
+	}
+
+	js, err := a.getData(u.String())
+	if err != nil {
+		return err
+	}
+
+	for _, v := range gjson.Get(js, d.LinkPath).Array() {
+		tmpU := a.baseURL.ResolveReference(&url.URL{Path: v.String()})
+
+		js, err := a.getData(tmpU.String())
+		if err != nil {
+			return err
+		}
+
+		tmp := gjson.Get(js, d.DataPath)
+
+		tags := map[string]string{
+			"address": a.baseURL.Host,
+		}
+		fields := make(map[string]interface{})
+
+		fields[d.DataName] = prepareValue(tmp)
+
+		for _, dt := range d.DataTags {
+			tmp := gjson.Get(js, dt)
+			if tmp.String() != "" {
+				tags[dt] = tmp.String()
+			}
+		}
+
+		sList.PushSamples("redfish", fields, tags)
+
+		if err = gatherDisks(a, d.Child, sList, js); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func prepareValue(val gjson.Result) any {
+	switch val.String() {
+	case "OK":
+		return 1
+	case "Warning":
+		return 2
+	case "Critical":
+		return 3
+	case "Enabled":
+		return 1
+	case "Disabled":
+		return 2
+	default:
+		return val.Value()
 	}
 }
 
