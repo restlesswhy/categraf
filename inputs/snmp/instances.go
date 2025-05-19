@@ -332,12 +332,12 @@ func (ins *Instance) getConnection(idx int) (snmpConnection, error) {
 		return nil, err
 	}
 
-	ins.connectionCache[idx] = gs
-
 	if err := gs.Connect(); err != nil {
 		ins.markAgentUnhealthy(agent)
 		return nil, fmt.Errorf("setting up connection: %w", err)
 	}
+
+	ins.connectionCache[idx] = gs
 
 	return gs, nil
 }
@@ -376,10 +376,12 @@ func fastPingRtt(ip string, timeout int) (float64, error) {
 	var rt float64
 	rt = -1
 	p := fastping.NewPinger()
+	p.Debug = true
 	ra, err := net.ResolveIPAddr("ip4:icmp", ip)
 	if err != nil {
 		return -1, err
 	}
+	fmt.Println(123123)
 	p.AddIPAddr(ra)
 	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		rt = float64(rtt.Microseconds())
