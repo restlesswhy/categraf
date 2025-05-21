@@ -332,12 +332,12 @@ func (ins *Instance) getConnection(idx int) (snmpConnection, error) {
 		return nil, err
 	}
 
+	ins.connectionCache[idx] = gs
+
 	if err := gs.Connect(); err != nil {
 		ins.markAgentUnhealthy(agent)
 		return nil, fmt.Errorf("setting up connection: %w", err)
 	}
-
-	ins.connectionCache[idx] = gs
 
 	return gs, nil
 }
