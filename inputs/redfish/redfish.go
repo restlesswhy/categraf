@@ -50,9 +50,10 @@ func (r *Redfish) GetInstances() []inputs.Instance {
 }
 
 type Instance struct {
-	Addresses []Address `toml:"addresses"`
-	Sets      []Set     `toml:"sets"`
-	Disks     Disk      `toml:"disks"`
+	Addresses    []Address `toml:"addresses"`
+	Sets         []Set     `toml:"sets"`
+	Disks        Disk      `toml:"disks"`
+	AgentHostTag string    `toml:"agent_host_tag"`
 
 	config.InstanceConfig
 }
@@ -139,6 +140,11 @@ func join(in ...string) string {
 
 func (i *Instance) Gather(sList *types.SampleList) {
 	for _, a := range i.Addresses {
+		if err := i.gatherRedfishUp(a, sList); err != nil {
+			log.Println("E! error gatherRedfishAccess", err)
+			continue
+		}
+
 		for _, s := range i.Sets {
 			setUrl := a.baseURL.ResolveReference(&url.URL{Path: s.URN})
 
@@ -155,7 +161,7 @@ func (i *Instance) Gather(sList *types.SampleList) {
 					fields := make(map[string]interface{})
 					fields[join(m.Prefix, m.Name)] = prepareValue(value)
 					tags := map[string]string{
-						"address": a.baseURL.Host,
+						i.AgentHostTag: a.baseURL.Host,
 					}
 
 					for _, v := range m.Tags {
@@ -172,11 +178,11 @@ func (i *Instance) Gather(sList *types.SampleList) {
 					continue
 				}
 
-				for i, v := range value.Array() {
+				for idx, v := range value.Array() {
 					fields := make(map[string]interface{})
 					fields[join(m.Prefix, m.Name)] = prepareValue(v)
 					tags := map[string]string{
-						"address": a.baseURL.Host,
+						i.AgentHostTag: a.baseURL.Host,
 					}
 
 					for _, t := range m.Tags {
@@ -185,8 +191,8 @@ func (i *Instance) Gather(sList *types.SampleList) {
 							continue
 						}
 
-						if len(tmp.Array()) > i {
-							tags[t.Name] = tmp.Array()[i].String()
+						if len(tmp.Array()) > idx {
+							tags[t.Name] = tmp.Array()[idx].String()
 						} else {
 							tags[t.Name] = tmp.String()
 						}
@@ -202,14 +208,43 @@ func (i *Instance) Gather(sList *types.SampleList) {
 			continue
 		}
 
-		if err := gatherDisks(a, &i.Disks, sList, ""); err != nil {
+		if err := i.gatherDisks(a, &i.Disks, sList, ""); err != nil {
 			log.Println("E! get disks data error", err)
 			continue
 		}
 	}
 }
 
-func gatherDisks(a Address, d *Disk, sList *types.SampleList, prev string) error {
+func (i *Instance) gatherRedfishUp(a Address, sList *types.SampleList) error {
+	url_ := a.baseURL.ResolveReference(&url.URL{Path: "redfish/v1/"})
+
+	req, err := http.NewRequest(http.MethodGet, url_.String(), nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("client do: %w", err)
+	}
+
+	ping := 0
+	if resp.StatusCode == 200 {
+		ping = 1
+	}
+
+	fields := make(map[string]interface{})
+	fields["up"] = ping
+	tags := map[string]string{
+		i.AgentHostTag: a.baseURL.Host,
+	}
+
+	sList.PushSamples("redfish", fields, tags)
+
+	return nil
+}
+
+func (i *Instance) gatherDisks(a Address, d *Disk, sList *types.SampleList, prev string) error {
 	if d == nil {
 		return nil
 	}
@@ -237,7 +272,7 @@ func gatherDisks(a Address, d *Disk, sList *types.SampleList, prev string) error
 		tmp := gjson.Get(js, d.DataPath)
 
 		tags := map[string]string{
-			"address": a.baseURL.Host,
+			i.AgentHostTag: a.baseURL.Host,
 		}
 		fields := make(map[string]interface{})
 
@@ -252,7 +287,7 @@ func gatherDisks(a Address, d *Disk, sList *types.SampleList, prev string) error
 
 		sList.PushSamples("redfish", fields, tags)
 
-		if err = gatherDisks(a, d.Child, sList, js); err != nil {
+		if err = i.gatherDisks(a, d.Child, sList, js); err != nil {
 			return err
 		}
 	}
