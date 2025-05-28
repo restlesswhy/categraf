@@ -1,4 +1,4 @@
-package dss
+package emc_unity
 
 import (
 	"crypto/tls"
@@ -19,29 +19,29 @@ import (
 )
 
 const (
-	inputName = "dss"
+	inputName = "emc_unity"
 )
 
-type Dss struct {
+type EmcUnity struct {
 	config.PluginConfig
 	Instances []*Instance `toml:"instances"`
 }
 
 func init() {
 	inputs.Add(inputName, func() inputs.Input {
-		return &Dss{}
+		return &EmcUnity{}
 	})
 }
 
-func (r *Dss) Clone() inputs.Input {
-	return &Dss{}
+func (r *EmcUnity) Clone() inputs.Input {
+	return &EmcUnity{}
 }
 
-func (r *Dss) Name() string {
+func (r *EmcUnity) Name() string {
 	return inputName
 }
 
-func (r *Dss) GetInstances() []inputs.Instance {
+func (r *EmcUnity) GetInstances() []inputs.Instance {
 	out := make([]inputs.Instance, len(r.Instances))
 	for i := 0; i < len(r.Instances); i++ {
 		out[i] = r.Instances[i]
@@ -195,7 +195,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "read.throughput"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -211,7 +211,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "write.throughput"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -227,7 +227,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "+.bandwidth"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -243,7 +243,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "read.bandwidth"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -259,7 +259,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "write.bandwidth"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -275,7 +275,7 @@ func (i *Instance) collectFibreChannel(a Address, sList *types.SampleList) error
 				"fibre_channel": spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 		}
 	}
 
@@ -341,7 +341,7 @@ func (i *Instance) collectCpu(a Address, sList *types.SampleList) error {
 				"sp":           "spa",
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.Contains(entry.Content.Path, "spb.utilization"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -357,7 +357,7 @@ func (i *Instance) collectCpu(a Address, sList *types.SampleList) error {
 				"sp":           "spb",
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 		}
 	}
 
@@ -429,7 +429,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "rw.read.throughput"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -445,7 +445,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "rw.write.throughput"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -461,7 +461,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "rw.+.ioSize"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -477,7 +477,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "rw.read.ioSize"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -493,7 +493,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "rw.write.ioSize"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -509,7 +509,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 
 		case strings.HasSuffix(entry.Content.Path, "sp.+.responseTime"):
 			spl := strings.Split(entry.Content.Path, ".")
@@ -525,7 +525,7 @@ func (i *Instance) collectLun(a Address, sList *types.SampleList) error {
 				"lun_name":     spl[2],
 			}
 
-			sList.PushSamples("dss", fields, tags)
+			sList.PushSamples(inputName, fields, tags)
 		}
 	}
 
